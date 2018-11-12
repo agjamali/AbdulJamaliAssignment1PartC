@@ -29,20 +29,22 @@ library("muscle")
 library("DECIPHER")
 library("iNEXT")
 
+
 #obtain data for jellyfish by using the bold api tool
-Scyphozoa <- read_tsv("http://www.boldsystems.org/index.php/API_Public/combined?taxon=Scyphozoa&format=tsv")
+Scyph <- read_tsv("http://www.boldsystems.org/index.php/API_Public/combined?taxon=Scyphozoa&format=tsv")
 
 #write the data into the working directory
-write_tsv(Scyphozoa, "Scyphozoa_BOLD_data.tsv")
-
-#read the data from the file into R and store in data object Scyph
-Scyph <- read_tsv("Scyphozoa_BOLD_data.tsv")
+write_tsv(Scyph, "Scyphozoa_BOLD_data.tsv")
 
 #review variables in Scyph
 names(Scyph)
 
-#remove Scyphozoa
-rm(Scyphozoa)
+
+######
+## JB Edit #1----------
+# your initial data import using the bold api tool loaded the dataframe and saved it as an object (Scyphozoa).  You saved a local copy using write_tsv, but then read the object back into the workspacee and assigned it to a new object (Scyph).  If you use the identical() function, it shows that the two objects Scyphozoa and Scyph are actually the same dataframe.  You did it right the first time by saving the BOLD tsv to a variable, but then theres no need to re-write the data as a new object.  Also then you won't need to remove the duplicate object later in the script. 
+######
+
 
 #remove all data with NA in the BIN listings
 Scyph1 <- Scyph[(grep(":", Scyph$bin_uri)),]
@@ -112,6 +114,21 @@ ScyphBayofSton$nucleotides <- DNAStringSet(ScyphBayofSton$nucleotides)
 #determine the nucleotide frequencies and store into a data object (it is apparent that there is almost double the amount of thymine than other nucleotides in the sequences... this may be indicative of something special)
 ScyphBayofSton.NucFreq <- as.data.frame(letterFrequency(ScyphBayofSton$nucleotides, letters = c("A", "C", "G", "T")))
 
+######
+# JB Edit #2------
+## I think this dataframe with the nucleotide counts and T-Frequency is the most interesting part of the analysis.  The problem is that when I view this dataframe I'm not entirely sure what I'm looking at.  I'll add more information to this dataframe and store it in a new object (ScyphBayofSton.NucFreq_jbEdit).  I'll start by using rownames() to add the Process ID identifiers:
+ScyphBayofSton.NucFreq_jbEdit <- ScyphBayofSton.NucFreq
+rownames(ScyphBayofSton.NucFreq_jbEdit) <- ScyphBayofSton$processid
+
+## I'll also add the bin_uri, the region, and the sequence itself:
+ScyphBayofSton.NucFreq_jbEdit$bin_uri <- ScyphBayofSton$bin_uri
+ScyphBayofSton.NucFreq_jbEdit$Region <- ScyphBayofSton$region
+ScyphBayofSton.NucFreq_jbEdit$COI_Sequence <- ScyphBayofSton$nucleotides
+## Re-arrange columns
+ScyphBayofSton.NucFreq_jbEdit <- ScyphBayofSton.NucFreq_jbEdit[,c(7,6,1,2,3,4,5,8)]
+######
+
+
 #calculate the thymine proportion and add to the end of the data object.
 ScyphBayofSton.NucFreq <- ScyphBayofSton.NucFreq %>%
   mutate(Tproportion = ((T) / (A + T + G + C)))
@@ -119,5 +136,41 @@ ScyphBayofSton.NucFreq <- ScyphBayofSton.NucFreq %>%
 #calculate the mean of the Tproportion (0.347, meaning 34.7% of the sequence is thymine)
 mean(ScyphBayofSton.NucFreq$Tproportion)
 
+
+######
+# JB Edit #3-------------
+## using the spantree to find a discrepency between species of the Bay of Ston location and the other 8 regions is interesting.  I'm going to try to expand on it.  You did a quick nucleotide analysis by computing the A,C,T, and G count and the T-Frequencies for the Bay of Ston region. I'm going to take this a step further by computing A,C,T,G counts and T-frequencies for two additional regions (South Adriatic and Veliko Jezero,Mljet), then see how they compare to the Bay of Ston data.
+
+## South Adriatic Region
+## Filter for Records in South Adriatic Region
+Scyph_s.adriatic <- Scyph %>%
+  filter(region == "South Adriatic") %>%
+  print()
+## Convert to DNAbin
+Scyph_s.adriatic$nucleotides <- DNAStringSet(Scyph_s.adriatic$nucleotides)
+## Calculate Nucleotide Counts and T Frequency
+Scyph_s.adriatic.NucFreq <- as.data.frame(letterFrequency(Scyph_s.adriatic$nucleotides, letters = c("A", "C", "G", "T"))) 
+Scyph_s.adriatic.NucFreq <- Scyph_s.adriatic.NucFreq %>% mutate(Tproportion = ((T) / (A + T + G + C)))
+# Set processid as Rownames
+rownames(Scyph_s.adriatic.NucFreq) <- Scyph_s.adriatic$processid
+
+## Veliko Jezero,Miljet Region
+## Filter for Records in VJM Region
+Scyph_vjm <- Scyph %>%
+  filter(region == "Veliko Jezero,Mljet") %>%
+  print()
+## Convert to DNAbin
+Scyph_vjm$nucleotides <- DNAStringSet(Scyph_vjm$nucleotides)
+## Calculate Nucleotide Counts and T Frequency
+Scyph_vjm.NucFreq <- as.data.frame(letterFrequency(Scyph_vjm$nucleotides, letters = c("A", "C", "G", "T")))
+Scyph_vjm.NucFreq <- Scyph_vjm.NucFreq %>% mutate(Tproportion = ((T) / (A + T + G + C)))
+# Set processid as Rownames
+rownames(Scyph_vjm.NucFreq) <- Scyph_vjm$processid
+
+## we can then compare these 3 dataframes:
+ScyphBayofSton.NucFreq
+Scyph_s.adriatic.NucFreq
+Scyph_vjm.NucFreq
+######
 
 #With careful manipulation of the BOLD data on jellyfish (schypho), it can be determined that the global distribution of jellyfish is broken down into three main areas. One of these distributions includes Croatia, where an abundance of lethal jellyfish have been reported. To dive into the unique regions of Croatia where jellyfish are found, we ran a spantree for the regions and found that the Bay of Ston had the highest dissimilarity. We then dived deeper into the species found in this region, Aurelia sp. 7-MND-2005, and determined certain genetic traits about their nucleotide sequences that may lead the way to understanding these species, and hopefully determining whether they are the lethal and poisonous species we are trying so hard to understand.
