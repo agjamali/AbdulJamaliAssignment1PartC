@@ -1,8 +1,6 @@
 # AbdulJamaliAssignment1PartC
 Assignment 3
 
-#I, Abdul Jamali, hereby declare that this is my original work and no one else has worked on it.
-
 #The following is based off of a television show I watched over the summer, I could not find a credible source for this however there are many google search results indicating that croatia is home to many lethal jellyfish species.
 
 #Assignment 1 part C:
